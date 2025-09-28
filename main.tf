@@ -4,11 +4,16 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"   # pick a stable version
+    }
   }
 }
 
 provider "aws" {
   region = var.aws_region
+  profile = "default"
 }
 
 resource "aws_ecr_repository" "webapp" {
@@ -63,6 +68,21 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
+# Get ECR auth token
+data "aws_ecr_authorization_token" "token" {
+  registry_id = "339712930646"
+}
+
+# Configure Docker provider with that token
+provider "docker" {
+  registry_auth {
+    address  = "${aws_ecr_repository.webapp.repository_url}"
+    username = data.aws_ecr_authorization_token.token.user_name
+    password = data.aws_ecr_authorization_token.token.password
+  }
+}
+
+
 
 resource "aws_instance" "app_host" {
   ami                    = "ami-08982f1c5bf93d976" 
@@ -70,6 +90,7 @@ resource "aws_instance" "app_host" {
   key_name               = var.ec2_key_name
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   subnet_id              = var.default_public_subnet_id
+
 
 
   user_data = base64encode(<<-EOF
@@ -85,4 +106,6 @@ resource "aws_instance" "app_host" {
     Name = "Container-App-Host"
   }
 }
+
+
 

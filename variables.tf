@@ -13,6 +13,7 @@ variable "ec2_instance_type" {
 variable "ec2_key_name" {
   description = "EC2 key"
   type        = string
+  default     = "vockey"
 }
 
 variable "default_vpc_id" {
